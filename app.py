@@ -216,24 +216,20 @@ if boton:
             w, h = clip2.size
             
             # ===== CÁLCULO DE RECORTE VERTICAL 9:16 =====
-            # Si el video es horizontal (ej. 1920x1080), calculamos el ancho necesario para una proporción 9:16
             target_width = int(h * (9 / 16))
             if target_width > w:
-                # Si por alguna razón el video es más estrecho, usamos el ancho completo y ajustamos la altura
                 target_width = w
                 target_height = int(w * (16 / 9))
                 cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=target_height)
             else:
-                # Recorte estándar centrado de horizontal a vertical
                 cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=h)
             
-            # Redimensionar a una resolución estándar de Shorts/Reels (ej. 720x1280)
             cv = cv.resized(height=1280)
             
             salida = os.path.join(tmpdir, f"s{i+1}.mp4")
             cv.write_videofile(salida, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
             
-            puntaje = 98 - (i * `4`)
+            puntaje = 98 - (i * 4)
             if puntaje < 75:
                 puntaje = 75
             nuevos.append({"path": salida, "duracion": duracion, "inicio": inicio, "score": puntaje})
