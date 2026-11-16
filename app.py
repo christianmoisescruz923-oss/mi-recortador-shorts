@@ -1,108 +1,97 @@
 import streamlit as st
-import tempfile
+import tempfile as tmpfile
 import os
 import yt_dlp
 from moviepy import VideoFileClip
 
-st.set_page_config(page_title="SHORTCUT AI - Recortador", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="NEXUS CLIPPER - Futuro", page_icon="👾", layout="centered")
 
-# ===== ESTILO FUTURISTA =====
+# ===== ESTILO CYBERPUNK FUTURISTA V2 =====
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600&display=swap');
     .stApp {
-        background: radial-gradient(circle at top, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        background: #050510;
+        background-image: 
+            radial-gradient(circle at 20% 20%, rgba(0,255,204,0.15) 0%, transparent 40%),
+            radial-gradient(circle at 80% 80%, rgba(255,0,110,0.15) 0%, transparent 40%),
+            linear-gradient(rgba(0,255,204,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,255,204,0.05) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
         color: white;
+        font-family: 'Inter', sans-serif;
     }
     h1 {
         text-align: center;
-        font-size: 38px !important;
-        background: linear-gradient(90deg, #00f2ff, #a855f7, #ff00cc);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 900;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 42px !important;
+        letter-spacing: 2px;
+        color: #00ffcc !important;
+        text-shadow: 0 0 10px #00ffcc, 0 0 25px #00ffcc, 0 0 45px #00ffcc;
+        margin-bottom: 0px !important;
     }
     .subtitle {
         text-align: center;
-        color: #cbd5e1;
-        font-size: 15px;
-        margin-top: -15px;
-        margin-bottom: 25px;
+        color: #a5f3fc;
+        font-size: 14px;
+        letter-spacing: 1px;
+        margin-bottom: 22px;
     }
-    .card {
-        background: rgba(255,255,255,0.08);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 20px;
-        padding: 20px;
-        margin-bottom: 18px;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    .neon-card {
+        background: rgba(10, 15, 35, 0.85);
+        border: 1px solid #00ffcc;
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 0 20px rgba(0,255,204,0.25), inset 0 0 20px rgba(0,255,204,0.05);
+        margin-bottom: 16px;
+    }
+    .step-title {
+        color: #00ffcc;
+        font-weight: 700;
+        font-size: 16px;
+        margin: 14px 0 8px 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     .stTextInput > div > div > input {
-        background: rgba(0,0,0,0.5) !important;
-        color: white !important;
-        border: 1px solid #a855f7 !important;
+        background: #0a0a1a !important;
+        color: #00ffcc !important;
+        border: 1.5px solid #00ffcc !important;
         border-radius: 12px !important;
-        padding: 12px !important;
+        padding: 14px !important;
+        font-size: 15px !important;
     }
-    .stSlider > div > div > div > div {
-        background: linear-gradient(90deg, #00f2ff, #ff00cc) !important;
+    .stTextInput > div > div > input::placeholder {
+        color: #64748b !important;
     }
+    .stSlider label { color: white !important; font-weight: 600; }
     .stButton > button {
         width: 100%;
-        background: linear-gradient(90deg, #7c3aed, #db2777, #06b6d4) !important;
-        color: white !important;
-        font-size: 18px !important;
-        font-weight: 800 !important;
+        background: #00ffcc !important;
+        color: #000 !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 17px !important;
+        font-weight: 900 !important;
+        letter-spacing: 1px;
         border: none !important;
-        border-radius: 15px !important;
-        padding: 15px !important;
-        box-shadow: 0 5px 20px rgba(219,39,119,0.5);
+        border-radius: 14px !important;
+        padding: 16px !important;
+        box-shadow: 0 0 25px #00ffcc, 0 0 50px rgba(0,255,204,0.4);
+        transition: 0.2s;
+    }
+    .stButton > button:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 35px #00ffcc;
     }
     .stDownloadButton > button {
         width: 100%;
-        background: rgba(255,255,255,0.12) !important;
-        color: white !important;
-        border: 1px solid #00f2ff !important;
+        background: transparent !important;
+        color: #00ffcc !important;
+        border: 1.5px solid #00ffcc !important;
         border-radius: 12px !important;
-        margin-top: 8px;
+        font-weight: 700 !important;
+        padding: 12px !important;
     }
+    .badge-row { text-align: center; margin-bottom: 18px; }
     .badge {
-        display: inline-block;
-        background: #00f2ff;
-        color: black;
-        font-size: 11px;
-        font-weight: 800;
-        padding: 4px 10px;
-        border-radius: 20px;
-        margin: 2px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ===== TITULO =====
-st.markdown("<h1>⚡ SHORTCUT AI</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Convierte cualquier video de YouTube en Shorts virales en segundos</p>", unsafe_allow_html=True)
-st.markdown("<div style='text-align:center'><span class='badge'>✦ IA AUTOMÁTICA</span> <span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> <span class='badge' style='background:#ff00cc;color:white'>✦ 100% GRATIS</span></div><br>", unsafe_allow_html=True)
-
-# ===== TARJETA PRINCIPAL =====
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("### 🔗 1. Pega tu link")
-url = st.text_input("Pega aquí el link de YouTube", placeholder="https://www.youtube.com/watch?v=...", label_visibility="collapsed")
-
-st.markdown("### 🎬 2. Configura tus Shorts")
-col1, col2 = st.columns(2)
-with col1:
-    num_shorts = st.slider("¿Cuántos shorts?", 1, 10, 5)
-with col2:
-    duracion = st.slider("Duración (seg)", 15, 60, 30)
-
-st.markdown("### 🚀 3. ¡A crear!")
-boton = st.button("✨ CORTAR EN SHORTS AHORA")
-st.markdown("</div>", unsafe_allow_html=True)
-
-if boton:
-    if not url:
-        st.warning("⚠️ Primero pega el link de YouTube")
-    else:
-        with st.spinner("🤖 La IA está descargando y cortando tu video... espera un poco"):
-            tmpdir = tempfile.mk
+        display: inline-block
