@@ -69,17 +69,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ===== TÍTULO =====
+# ===== TITULO =====
 st.markdown("<h1>⚡ SHORTCUT AI</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Sube tu video y convierte los momentos épicos en Shorts virales</p>", unsafe_allow_html=True)
-st.markdown(
-    "<div style='text-align:center'>"
-    "<span class='badge'>✦ IA AUTOMÁTICA</span> "
-    "<span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> "
-    "<span class='badge' style='background:#ff00cc;color:white'>✦ CON AUDIO</span>"
-    "</div><br>",
-    unsafe_allow_html=True
-)
+st.markdown("<div style='text-align:center'><span class='badge'>✦ IA AUTOMÁTICA</span> <span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> <span class='badge' style='background:#ff00cc;color:white'>✦ CON AUDIO</span></div><br>", unsafe_allow_html=True)
 
 if "shorts_list" not in st.session_state:
     st.session_state.shorts_list = []
@@ -92,56 +85,48 @@ if "tmpdir" not in st.session_state:
 if len(st.session_state.shorts_list) > 0:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### ✅ ¡Análisis terminado!")
-    st.write("Toca un Short para ver su vista previa con audio y descargarlo.")
-
-    for i, info in enumerate(st.session_state.shorts_list):
+    st.write("Toca un Short para ver su vista previa con audio.")
+    
+    for i in range(len(st.session_state.shorts_list)):
+        info = st.session_state.shorts_list[i]
         mm = int(info["inicio"] // 60)
         ss = int(info["inicio"] % 60)
-        prefijo = "✅ " if st.session_state.sel == i else ""
-        txt = f"{prefijo}🔥 Short {i+1} - Min {mm:02d}:{ss:02d} - {info['score']}% Viral"
+        txt = f"🔥 Short {i+1} - Min {mm}:{ss:02d} - {info['score']}% Viral"
+        if st.session_state.sel == i:
+            txt = f"✅ {txt}"
         st.write(txt)
         if st.button(f"▶️ Ver Short {i+1}", key=f"ver_{i}"):
             st.session_state.sel = i
             st.rerun()
-
+            
     st.write("---")
     idx = st.session_state.sel
     info_sel = st.session_state.shorts_list[idx]
     mm2 = int(info_sel["inicio"] // 60)
     ss2 = int(info_sel["inicio"] % 60)
-    st.subheader(f"🎬 Vista previa Short {idx+1} - Min {mm2:02d}:{ss2:02d} - Con audio 🔊")
-
+    
+    st.subheader(f"🎬 Vista previa Short {idx+1} - Min {mm2}:{ss2:02d} - Con audio 🔊")
     if os.path.exists(info_sel["path"]):
         st.video(info_sel["path"])
         with open(info_sel["path"], "rb") as f:
             datos = f.read()
-        st.download_button(
-            f"⬇️ Descargar este Short {idx+1} con audio",
-            datos,
-            file_name=f"short_epico_{idx+1}.mp4",
-            mime="video/mp4"
-        )
-
+        st.download_button(f"⬇️ Descargar este Short {idx+1} con audio", datos, file_name=f"short_epico_{idx+1}.mp4", mime="video/mp4")
+        
     if st.button("⬅️ Analizar otro video"):
-        for item in st.session_state.shorts_list:
-            if os.path.exists(item["path"]):
-                os.remove(item["path"])
         st.session_state.shorts_list = []
         st.session_state.sel = 0
         st.rerun()
-
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 # ===== TARJETA PRINCIPAL - SUBIR ARCHIVO =====
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.markdown("### 📤 1. Sube tu video")
-st.write("Elige tu video largo desde tu dispositivo.")
+st.write("Toca abajo y elige tu video desde tu celular o compu.")
 archivo = st.file_uploader("Sube tu video aquí", type=["mp4", "mov", "mkv", "webm"], label_visibility="collapsed")
-
 if archivo is not None:
-    mb = archivo.size / (1024 * 1024)
-    st.success(f"✅ ¡Video subido! Pesa {mb:.1f} MB")
+    mb = archivo.size / 1024 / 1024
+    st.success(f"✅ ¡Video subido! Pesa {int(mb)} MB")
 
 st.markdown("### 🎬 2. Configura tus Shorts")
 col1, col2 = st.columns(2)
@@ -151,26 +136,97 @@ with col2:
     duracion = st.slider("Duración (seg)", 15, 60, 30)
 
 st.markdown("### 🚀 3. ¡A crear!")
-st.write("La IA buscará los momentos de mayor intensidad en el audio.")
+st.write("La IA busca gritos, sustos y música intensa.")
 boton = st.button("✨ CORTAR EN SHORTS AHORA")
 st.markdown("</div>", unsafe_allow_html=True)
-st.write("Para videos largos puede tomar unos momentos. No recargues la página.")
+st.write("Para videos largos tarda 1-2 min. No recargues la página.")
 
 if boton:
     if archivo is None:
         st.warning("⚠️ Primero sube un video")
         st.stop()
-
+        
     tmpdir = st.session_state.tmpdir
-    ext = os.path.splitext(archivo.name)[1] or ".mp4"
-    video_path = os.path.join(tmpdir, f"input_video{ext}")
-
+    video_path = os.path.join(tmpdir, "video.mp4")
     with open(video_path, "wb") as f:
         f.write(archivo.read())
-
-    clip = VideoFileClip(video_path)
-    total = clip.duration
-
-    if total <= duracion:
+        
+    clip_temp = VideoFileClip(video_path)
+    total = clip_temp.duration
+    clip_temp.close()
+    mins = int(total // 60)
+    st.success(f"✅ Video de {mins} minutos detectado")
+    
+    with st.spinner("🤖 La IA está escuchando todo el video..."):
+        clip = VideoFileClip(video_path)
+        audio = clip.audio
+        fps_a = 22050
+        arr = audio.to_soundarray(fps=fps_a)
+        if len(arr.shape) > 1:
+            arr = arr.mean(axis=1)
+            
+        energia = []
+        for seg in range(int(total)):
+            ini = seg * fps_a
+            fin = (seg + 1) * fps_a
+            if fin > len(arr):
+                break
+            trozo = arr[ini:fin]
+            v = float(np.sqrt(np.mean(trozo ** 2)))
+            energia.append(v + 0.0001)
         clip.close()
-        st.error(f"⚠️ El video dura {int(total)}s, debe ser más largo que la duración elegida ({duracion}s
+        
+        scores = []
+        for i in range(len(energia) - duracion):
+            ventana = energia[i:i+duracion]
+            s = sum(ventana) / len(ventana)
+            s = s + max(ventana) * 0.8
+            scores.append((s, i))
+            
+        scores.sort(reverse=True)
+        inicios = []
+        for s, inicio in scores:
+            cerca = False
+            for ya in inicios:
+                if abs(inicio - ya) < duracion + 5:
+                    cerca = True
+            if not cerca:
+                inicios.append(inicio)
+            if len(inicios) >= num_shorts:
+                break
+        inicios.sort()
+        
+    st.success("✅ ¡Encontré momentos épicos!")
+    
+    with st.spinner("✂️ Cortando en vertical con audio..."):
+        clip_o = VideoFileClip(video_path)
+        nuevos = []
+        prog = st.progress(0)
+        
+        for i, inicio in enumerate(inicios):
+            fin = inicio + duracion
+            if fin > total:
+                fin = total
+            
+            clip2 = clip_o.subclipped(inicio, fin)
+            w, h = clip2.size
+            nh = int(w * 16 / 9)
+            if nh > h:
+                nh = h
+                
+            cv = clip2.cropped(x_center=w//2, y_center=h//2, width=w, height=nh)
+            cv = cv.resized(height=720)
+            salida = os.path.join(tmpdir, f"s{i+1}.mp4")
+            cv.write_videofile(salida, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
+            
+            puntaje = 98 - (i * 4)
+            if puntaje < 75:
+                puntaje = 75
+            nuevos.append({"path": salida, "duracion": duracion, "inicio": inicio, "score": puntaje})
+            prog.progress((i+1)/len(inicios))
+            
+        clip_o.close()
+        st.session_state.shorts_list = nuevos
+        st.session_state.sel = 0
+        st.balloons()
+        st.rerun()
