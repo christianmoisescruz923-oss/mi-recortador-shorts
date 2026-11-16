@@ -1,7 +1,7 @@
 import streamlit as st
 import tempfile
 import os
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 
 st.set_page_config(page_title="Mi Recortador de Shorts", page_icon="✂️")
 st.title("✂️ Mi Recortador de Shorts")
