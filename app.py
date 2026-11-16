@@ -1,10 +1,10 @@
 import streamlit as st
 import tempfile
 import os
-import yt_dlp
+import numpy as np
 from moviepy import VideoFileClip
 
-st.set_page_config(page_title="SHORTCUT AI - Recortador", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="SHORTCUT AI - Subir Archivo", page_icon="⚡", layout="centered")
 
 # ===== ESTILO FUTURISTA =====
 st.markdown("""
@@ -36,16 +36,6 @@ st.markdown("""
         padding: 20px;
         margin-bottom: 18px;
         box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-    }
-    .stTextInput > div > div > input {
-        background: rgba(0,0,0,0.5) !important;
-        color: white !important;
-        border: 1px solid #a855f7 !important;
-        border-radius: 12px !important;
-        padding: 12px !important;
-    }
-    .stSlider > div > div > div > div {
-        background: linear-gradient(90deg, #00f2ff, #ff00cc) !important;
     }
     .stButton > button {
         width: 100%;
@@ -81,71 +71,15 @@ st.markdown("""
 
 # ===== TITULO =====
 st.markdown("<h1>⚡ SHORTCUT AI</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Convierte cualquier video de YouTube en Shorts virales en segundos</p>", unsafe_allow_html=True)
-st.markdown("<div style='text-align:center'><span class='badge'>✦ IA AUTOMÁTICA</span> <span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> <span class='badge' style='background:#ff00cc;color:white'>✦ 100% GRATIS</span></div><br>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Sube tu video y convierte los momentos epicos en Shorts virales</p>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center'><span class='badge'>✦ IA AUTOMATICA</span> <span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> <span class='badge' style='background:#ff00cc;color:white'>✦ CON AUDIO</span></div><br>", unsafe_allow_html=True)
 
-# ===== TARJETA PRINCIPAL =====
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("### 🔗 1. Pega tu link")
-url = st.text_input("Pega aquí el link de YouTube", placeholder="https://www.youtube.com/watch?v=...", label_visibility="collapsed")
+if "shorts_list" not in st.session_state:
+    st.session_state.shorts_list = []
+if "sel" not in st.session_state:
+    st.session_state.sel = 0
+if "tmpdir" not in st.session_state:
+    st.session_state.tmpdir = tempfile.mkdtemp()
 
-st.markdown("### 🎬 2. Configura tus Shorts")
-col1, col2 = st.columns(2)
-with col1:
-    num_shorts = st.slider("¿Cuántos shorts?", 1, 10, 5)
-with col2:
-    duracion = st.slider("Duración (seg)", 15, 60, 30)
-
-st.markdown("### 🚀 3. ¡A crear!")
-boton = st.button("✨ CORTAR EN SHORTS AHORA")
-st.markdown("</div>", unsafe_allow_html=True)
-
-if boton:
-    if not url:
-        st.warning("⚠️ Primero pega el link de YouTube")
-    else:
-        with st.spinner("🤖 La IA está descargando y cortando tu video... espera un poco"):
-            tmpdir = tempfile.mkdtemp()
-            video_path = os.path.join(tmpdir, "video.mp4")
-            ydl_opts = {
-                'format': 'mp4[height<=720]/best[height<=720]',
-                'outtmpl': video_path,
-                'quiet': True,
-                'noplaylist': True,
-                'user_agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
-                'http_headers': {'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'},
-            }
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-                
-                clip_original = VideoFileClip(video_path)
-                duracion_total = clip_original.duration
-                st.success(f"✅ Video detectado: {int(duracion_total)} segundos | Creando {num_shorts} Shorts...")
-
-                for i in range(num_shorts):
-                    inicio = i * duracion
-                    fin = inicio + duracion
-                    if fin > duracion_total:
-                        break
-                    clip = clip_original.subclipped(inicio, fin)
-                    w, h = clip.size
-                    nuevo_h = int(w * 16 / 9)
-                    if nuevo_h > h:
-                        nuevo_h = h
-                    clip_vertical = clip.cropped(x_center=w//2, y_center=h//2, width=w, height=nuevo_h)
-                    clip_vertical = clip_vertical.resized(height=1280)
-
-                    salida = os.path.join(tmpdir, f"short_{i+1}.mp4")
-                    clip_vertical.write_videofile(salida, codec="libx264", audio_codec="aac", logger=None)
-                    
-                    st.markdown(f"<div class='card'><b>🎞️ Short {i+1} - {duracion}s - Listo para TikTok / Shorts</b></div>", unsafe_allow_html=True)
-                    with open(salida, 'rb') as f:
-                        st.download_button(f"⬇️ Descargar Short {i+1}", f, file_name=f"short_{i+1}.mp4", key=f"dl{i}")
-                
-                st.balloons()
-                st.success("🎉 ¡Listo! Ya tienes tus Shorts, a subirlos y a hacerse viral")
-            except Exception as e:
-                st.error(f"Hubo un error: {e}")
-                st.write("Prueba con otro video, algunos videos no dejan descargar.")
+# ===== SI YA HAY SHORTS, MOSTRAR MENU =====
+if len(st.session_state.shorts_list) > 0:
