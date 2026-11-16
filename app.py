@@ -71,8 +71,8 @@ st.markdown("""
 
 # ===== TITULO =====
 st.markdown("<h1>⚡ SHORTCUT AI</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Sube tu video y convierte los momentos épicos en Shorts virales</p>", unsafe_allow_html=True)
-st.markdown("<div style='text-align:center'><span class='badge'>✦ IA AUTOMÁTICA</span> <span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> <span class='badge' style='background:#ff00cc;color:white'>✦ CON AUDIO</span></div><br>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Sube tu video y conviértelo en Shorts o Reels verticales automáticamente</p>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center'><span class='badge'>✦ FORMATO VERTICAL 9:16</span> <span class='badge' style='background:#a855f7;color:white'>✦ SIN MARCA DE AGUA</span> <span class='badge' style='background:#ff00cc;color:white'>✦ CON AUDIO</span></div><br>", unsafe_allow_html=True)
 
 if "shorts_list" not in st.session_state:
     st.session_state.shorts_list = []
@@ -84,14 +84,14 @@ if "tmpdir" not in st.session_state:
 # ===== SI YA HAY SHORTS, MOSTRAR MENÚ =====
 if len(st.session_state.shorts_list) > 0:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("### ✅ ¡Análisis terminado!")
-    st.write("Toca un Short para ver su vista previa con audio.")
+    st.markdown("### ✅ ¡Recorte vertical terminado!")
+    st.write("Toca un Short para ver su vista previa en formato vertical con audio.")
     
     for i in range(len(st.session_state.shorts_list)):
         info = st.session_state.shorts_list[i]
         mm = int(info["inicio"] // 60)
         ss = int(info["inicio"] % 60)
-        txt = f"🔥 Short {i+1} - Min {mm}:{ss:02d} - {info['score']}% Viral"
+        txt = f"🔥 Short {i+1} (Vertical 9:16) - Min {mm}:{ss:02d} - {info['score']}% Viral"
         if st.session_state.sel == i:
             txt = f"✅ {txt}"
         st.write(txt)
@@ -105,12 +105,12 @@ if len(st.session_state.shorts_list) > 0:
     mm2 = int(info_sel["inicio"] // 60)
     ss2 = int(info_sel["inicio"] % 60)
     
-    st.subheader(f"🎬 Vista previa Short {idx+1} - Min {mm2}:{ss2:02d} - Con audio 🔊")
+    st.subheader(f"🎬 Vista previa Short {idx+1} - Min {mm2}:{ss2:02d}")
     if os.path.exists(info_sel["path"]):
         st.video(info_sel["path"])
         with open(info_sel["path"], "rb") as f:
             datos = f.read()
-        st.download_button(f"⬇️ Descargar este Short {idx+1} con audio", datos, file_name=f"short_epico_{idx+1}.mp4", mime="video/mp4")
+        st.download_button(f"⬇️ Descargar Short {idx+1} en formato vertical", datos, file_name=f"short_vertical_{idx+1}.mp4", mime="video/mp4")
         
     if st.button("⬅️ Analizar otro video"):
         st.session_state.shorts_list = []
@@ -122,7 +122,7 @@ if len(st.session_state.shorts_list) > 0:
 # ===== TARJETA PRINCIPAL - SUBIR ARCHIVO =====
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.markdown("### 📤 1. Sube tu video")
-st.write("Toca abajo y elige tu video desde tu celular o compu.")
+st.write("Elige tu video horizontal para recortarlo a formato vertical de celular.")
 archivo = st.file_uploader("Sube tu video aquí", type=["mp4", "mov", "mkv", "webm"], label_visibility="collapsed")
 if archivo is not None:
     mb = archivo.size / 1024 / 1024
@@ -136,8 +136,8 @@ with col2:
     duracion = st.slider("Duración (seg)", 15, 60, 30)
 
 st.markdown("### 🚀 3. ¡A crear!")
-st.write("La IA busca gritos, sustos y música intensa.")
-boton = st.button("✨ CORTAR EN SHORTS AHORA")
+st.write("La IA buscará los mejores momentos y recortará en formato vertical 9:16.")
+boton = st.button("✨ CORTAR EN SHORTS VERTICALES")
 st.markdown("</div>", unsafe_allow_html=True)
 st.write("Para videos largos tarda 1-2 min. No recargues la página.")
 
@@ -157,23 +157,27 @@ if boton:
     mins = int(total // 60)
     st.success(f"✅ Video de {mins} minutos detectado")
     
-    with st.spinner("🤖 La IA está escuchando todo el video..."):
+    with st.spinner("🤖 La IA está analizando el ritmo y audio del video..."):
         clip = VideoFileClip(video_path)
         audio = clip.audio
-        fps_a = 22050
-        arr = audio.to_soundarray(fps=fps_a)
-        if len(arr.shape) > 1:
-            arr = arr.mean(axis=1)
-            
-        energia = []
-        for seg in range(int(total)):
-            ini = seg * fps_a
-            fin = (seg + 1) * fps_a
-            if fin > len(arr):
-                break
-            trozo = arr[ini:fin]
-            v = float(np.sqrt(np.mean(trozo ** 2)))
-            energia.append(v + 0.0001)
+        
+        if audio is None:
+            energia = [1.0 for _ in range(int(total))]
+        else:
+            fps_a = 22050
+            arr = audio.to_soundarray(fps=fps_a)
+            if len(arr.shape) > 1:
+                arr = arr.mean(axis=1)
+                
+            energia = []
+            for seg in range(int(total)):
+                ini = seg * fps_a
+                fin = (seg + 1) * fps_a
+                if fin > len(arr):
+                    break
+                trozo = arr[ini:fin]
+                v = float(np.sqrt(np.mean(trozo ** 2)))
+                energia.append(v + 0.0001)
         clip.close()
         
         scores = []
@@ -196,9 +200,9 @@ if boton:
                 break
         inicios.sort()
         
-    st.success("✅ ¡Encontré momentos épicos!")
+    st.success("✅ ¡Momentos épicos encontrados!")
     
-    with st.spinner("✂️ Cortando en vertical con audio..."):
+    with st.spinner("✂️ Recortando al centro en formato vertical (9:16)..."):
         clip_o = VideoFileClip(video_path)
         nuevos = []
         prog = st.progress(0)
@@ -210,16 +214,26 @@ if boton:
             
             clip2 = clip_o.subclipped(inicio, fin)
             w, h = clip2.size
-            nh = int(w * 16 / 9)
-            if nh > h:
-                nh = h
-                
-            cv = clip2.cropped(x_center=w//2, y_center=h//2, width=w, height=nh)
-            cv = cv.resized(height=720)
+            
+            # ===== CÁLCULO DE RECORTE VERTICAL 9:16 =====
+            # Si el video es horizontal (ej. 1920x1080), calculamos el ancho necesario para una proporción 9:16
+            target_width = int(h * (9 / 16))
+            if target_width > w:
+                # Si por alguna razón el video es más estrecho, usamos el ancho completo y ajustamos la altura
+                target_width = w
+                target_height = int(w * (16 / 9))
+                cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=target_height)
+            else:
+                # Recorte estándar centrado de horizontal a vertical
+                cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=h)
+            
+            # Redimensionar a una resolución estándar de Shorts/Reels (ej. 720x1280)
+            cv = cv.resized(height=1280)
+            
             salida = os.path.join(tmpdir, f"s{i+1}.mp4")
             cv.write_videofile(salida, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
             
-            puntaje = 98 - (i * 4)
+            puntaje = 98 - (i * `4`)
             if puntaje < 75:
                 puntaje = 75
             nuevos.append({"path": salida, "duracion": duracion, "inicio": inicio, "score": puntaje})
