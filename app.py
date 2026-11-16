@@ -28,7 +28,7 @@ if "tmpdir" not in st.session_state:
 
 if len(st.session_state.lista) > 0:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.write("✅ Listo! Toca un clip para verlo")
+    st.write("Listo! Toca un clip para verlo")
     for i in range(len(st.session_state.lista)):
         info = st.session_state.lista[i]
         mm = int(info["inicio"] // 60)
@@ -68,4 +68,32 @@ with col2:
     duracion = st.slider("Segundos", 15, 60, 30)
 st.write("3. A crear!")
 boton = st.button("CORTAR EN HORIZONTAL 16:9")
-st
+st.markdown("</div>", unsafe_allow_html=True)
+
+if boton:
+    if archivo is None:
+        st.warning("Primero sube un video")
+        st.stop()
+    tmpdir = st.session_state.tmpdir
+    video_path = os.path.join(tmpdir, "video.mp4")
+    with open(video_path, "wb") as f:
+        f.write(archivo.read())
+    try:
+        clip_temp = VideoFileClip(video_path)
+        total = clip_temp.duration
+        clip_temp.close()
+    except Exception as e:
+        st.error("No se pudo leer: " + str(e))
+        st.stop()
+    st.success("Video de " + str(int(total // 60)) + " min")
+    with st.spinner("Analizando audio..."):
+        try:
+            clip = VideoFileClip(video_path)
+            audio = clip.audio
+            if audio is None:
+                energia = [1.0 for _ in range(int(total))]
+            else:
+                fps_a = 11025
+                arr = audio.to_soundarray(fps=fps_a)
+                if len(arr.shape) > 1:
+                    arr = arr.mean(axis
