@@ -14,71 +14,86 @@ CSS += ".neon-card{background:rgba(10,15,35,0.9);border:1px solid #00ffcc;border
 CSS += ".step-title{color:#00ffcc;font-weight:700;font-size:16px;margin:14px 0 8px 0;}"
 CSS += ".stTextInput > div > div > input{background:#0a0a1a !important;color:#00ffcc !important;border:1.5px solid #00ffcc !important;border-radius:12px !important;padding:14px !important;}"
 CSS += ".stButton > button{width:100%;background:#00ffcc !important;color:#000 !important;font-size:17px !important;font-weight:900 !important;border:none !important;border-radius:14px !important;padding:16px !important;box-shadow:0 0 25px #00ffcc;}"
-CSS += ".stDownloadButton > button{width:100%;background:transparent !important;color:#00ffcc !important;border:1.5px solid #00ffcc !important;border-radius:12px !important;font-weight:700 !important;}"
+CSS += ".stDownloadButton > button{width:100%;background:#ff006e !important;color:white !important;font-size:16px !important;font-weight:900 !important;border:none !important;border-radius:14px !important;padding:14px !important;box-shadow:0 0 20px #ff006e;}"
 CSS += ".badge{display:inline-block;border:1px solid #00ffcc;color:#00ffcc;font-size:10px;font-weight:800;padding:5px 10px;border-radius:20px;margin:2px;}"
-CSS += ".badge-pink{border-color:#ff006e;color:#ff006e;}"
 CSS += ".short-card{background:linear-gradient(135deg,rgba(0,255,204,0.12),rgba(255,0,110,0.12));border:1px solid rgba(255,255,255,0.2);border-radius:14px;padding:14px;margin:10px 0 4px 0;}"
 CSS += "</style>"
 st.markdown(CSS, unsafe_allow_html=True)
 
-st.markdown("<h1>👾 NEXUS CLIPPER</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>SISTEMA V2.0 // YOUTUBE A SHORTS VIRALES // IA ACTIVADA</p>", unsafe_allow_html=True)
-st.markdown("<div style='text-align:center'><span class='badge'>● ONLINE</span> <span class='badge badge-pink'>⚡ VELOCIDAD ULTRA</span> <span class='badge'>★ SIN MARCA DE AGUA</span></div><br>", unsafe_allow_html=True)
+if "shorts_list" not in st.session_state:
+    st.session_state.shorts_list = []
+if "shorts_bytes" not in st.session_state:
+    st.session_state.shorts_bytes = {}
 
+st.markdown("<h1>👾 NEXUS CLIPPER</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>GENERAR -> VER -> ELEGIR -> DESCARGAR SOLO EL QUE TE GUSTE</p>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center'><span class='badge'>● ONLINE</span> <span class='badge'>🎬 VISTA PREVIA</span></div><br>", unsafe_allow_html=True)
+
+# Si ya hay shorts generados, mostrar el MENU DE VER
+if len(st.session_state.shorts_list) > 0:
+    st.markdown("<div class='neon-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='step-title'>🎬 TUS SHORTS LISTOS - ESCOGE UNO PARA VERLO</div>", unsafe_allow_html=True)
+    st.write("Toca un Short para verlo, y si te gusta lo descargas abajo.")
+    opciones = [f"🎬 Short {i+1} - {st.session_state.shorts_list[i]['duracion']}s" for i in range(len(st.session_state.shorts_list))]
+    seleccion = st.selectbox("Elige un Short para ver:", opciones)
+    idx = opciones.index(seleccion)
+    info = st.session_state.shorts_list[idx]
+    st.video(info["path"])
+    st.markdown(f"<div class='short-card'>🎬 <b>{seleccion}</b> - Listo para TikTok / Shorts / Reels</div>", unsafe_allow_html=True)
+    with open(info["path"], "rb") as f:
+        st.download_button(f"⬇️ DESCARGAR ESTE SHORT - {seleccion}", f, file_name=f"short_{idx+1}.mp4", key=f"dl_unico_{idx}")
+    colA, colB = st.columns(2)
+    with colA:
+        if st.button("⬅️ HACER OTROS SHORTS"):
+            st.session_state.shorts_list = []
+            st.session_state.shorts_bytes = {}
+            st.rerun()
+    with colB:
+        if st.button("⬇️ DESCARGAR TODOS"):
+            st.info("Para descargar todos, ve uno por uno y picale descargar, asi no se traba tu cel.")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# Si NO hay shorts, mostrar el generador
 st.markdown("<div class='neon-card'>", unsafe_allow_html=True)
-st.markdown("<div class='step-title'>// 01 - INSERTAR ENLACE</div>", unsafe_allow_html=True)
-url = st.text_input("Link", placeholder="https://www.youtube.com/watch?v=...", label_visibility="collapsed")
-st.markdown("<div class='step-title'>// 02 - CONFIGURACION</div>", unsafe_allow_html=True)
+modo = st.radio("Como quieres hacerlo?", ["📤 Subir video desde mi celular (SIEMPRE funciona)", "🔗 Pegar link de YouTube (a veces YouTube lo bloquea)"], index=0)
+tmpdir = tmpfile.mkdtemp()
+video_path_final = None
+url = None
+minuto_inicio = 0
+if modo.startswith("🔗"):
+    url = st.text_input("Link", placeholder="https://www.youtube.com/watch?v=...", label_visibility="collapsed")
+    minuto_inicio = st.slider("Empezar desde el minuto", 0, 110, 0)
+else:
+    st.write("1. Descarga el video en tu cel con Snaptube")
+    st.write("2. Subelo aqui abajo")
+    archivo = st.file_uploader("Sube tu video MP4 aqui", type=["mp4", "mov", "mkv", "webm"])
+    if archivo is not None:
+        video_path_final = os.path.join(tmpdir, "subido.mp4")
+        with open(video_path_final, "wb") as f:
+            f.write(archivo.read())
+        st.success("Video subido! Ya puedes cortar")
+    minuto_inicio = st.slider("Empezar desde el minuto (si es largo)", 0, 110, 0)
 c1, c2 = st.columns(2)
 with c1:
     num_shorts = st.slider("N DE SHORTS", 1, 10, 5)
 with c2:
     duracion = st.slider("DURACION SEG", 15, 60, 30)
-st.markdown("<div class='step-title'>// 03 - EJECUTAR</div>", unsafe_allow_html=True)
-boton = st.button("▶ GENERAR SHORTS")
+boton = st.button("▶ GENERAR SHORTS Y VERLOS")
 st.markdown("</div>", unsafe_allow_html=True)
 
 if boton:
-    if not url:
-        st.warning("Primero pega el link de YouTube")
-    else:
-        with st.spinner("PROCESANDO... Descargando y cortando con IA..."):
-            tmpdir = tmpfile.mkdtemp()
+    video_path = video_path_final
+    if modo.startswith("🔗"):
+        if not url:
+            st.warning("Pega el link primero")
+            st.stop()
+        with st.spinner("Intentando descargar de YouTube..."):
             video_path = os.path.join(tmpdir, "video.mp4")
-            ydl_opts = {
-                'format': 'mp4[height<=720]/best[height<=720]',
-                'outtmpl': video_path,
-                'quiet': True,
-                'noplaylist': True,
-                'user_agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
-                'http_headers': {'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'},
-            }
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-                clip_original = VideoFileClip(video_path)
-                duracion_total = clip_original.duration
-                st.success(f"VIDEO DETECTADO: {int(duracion_total)}s | GENERANDO {num_shorts} SHORTS...")
-                for i in range(num_shorts):
-                    inicio = i * duracion
-                    fin = inicio + duracion
-                    if fin > duracion_total:
-                        break
-                    clip = clip_original.subclipped(inicio, fin)
-                    w, h = clip.size
-                    nuevo_h = int(w * 16 / 9)
-                    if nuevo_h > h:
-                        nuevo_h = h
-                    clip_vertical = clip.cropped(x_center=w//2, y_center=h//2, width=w, height=nuevo_h)
-                    clip_vertical = clip_vertical.resized(height=1280)
-                    salida = os.path.join(tmpdir, f"short_{i+1}.mp4")
-                    clip_vertical.write_videofile(salida, codec="libx264", audio_codec="aac", logger=None)
-                    st.markdown(f"<div class='short-card'>🎬 <b>SHORT {i+1}</b> - {duracion}s - LISTO</div>", unsafe_allow_html=True)
-                    with open(salida, 'rb') as f:
-                        st.download_button(f"DESCARGAR SHORT {i+1}", f, file_name=f"short_{i+1}.mp4", key=f"dl{i}")
-                st.balloons()
-                st.success("MISION COMPLETADA - Todos tus Shorts estan listos")
-            except Exception as e:
-                st.error(f"Hubo un error: {e}")
-                st.write("Prueba con otro video, algunos videos no dejan descargar.")
+            inicio_seg = minuto_inicio * 60
+            fin_seg = inicio_seg + (num_shorts * duracion) + 5
+            intentos = [{'player_client': ['android']}, {'player_client': ['ios']}, {'player_client': ['web']}]
+            descargado = False
+            for intento in intentos:
+                try:
+                    ydl_opts = {'format': 'mp4[height<=720]/best[height<=720]', 'outtmpl': video_path, 'quiet': True, 'noplaylist
