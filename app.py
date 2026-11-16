@@ -122,7 +122,7 @@ if len(st.session_state.shorts_list) > 0:
 # ===== TARJETA PRINCIPAL - SUBIR ARCHIVO =====
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.markdown("### 📤 1. Sube tu video")
-st.write("Elige tu video horizontal para recortarlo a formato vertical de celular.")
+st.info("💡 **Consejo:** Para evitar que el servidor colapse, usa videos de menos de 50 MB o de pocos minutos.")
 archivo = st.file_uploader("Sube tu video aquí", type=["mp4", "mov", "mkv", "webm"], label_visibility="collapsed")
 if archivo is not None:
     mb = archivo.size / 1024 / 1024
@@ -131,15 +131,14 @@ if archivo is not None:
 st.markdown("### 🎬 2. Configura tus Shorts")
 col1, col2 = st.columns(2)
 with col1:
-    num_shorts = st.slider("¿Cuántos shorts?", 1, 5, 3)
+    num_shorts = st.slider("¿Cuántos shorts?", 1, 5, 2)
 with col2:
-    duracion = st.slider("Duración (seg)", 15, 60, 30)
+    duracion = st.slider("Duración (seg)", 15, 30, 20)
 
 st.markdown("### 🚀 3. ¡A crear!")
 st.write("La IA buscará los mejores momentos y recortará en formato vertical 9:16.")
 boton = st.button("✨ CORTAR EN SHORTS VERTICALES")
 st.markdown("</div>", unsafe_allow_html=True)
-st.write("Para videos largos tarda 1-2 min. No recargues la página.")
 
 if boton:
     if archivo is None:
@@ -151,92 +150,105 @@ if boton:
     with open(video_path, "wb") as f:
         f.write(archivo.read())
         
-    clip_temp = VideoFileClip(video_path)
-    total = clip_temp.duration
-    clip_temp.close()
+    try:
+        clip_temp = VideoFileClip(video_path)
+        total = clip_temp.duration
+        clip_temp.close()
+    except Exception as e:
+        st.error(f"❌ Error al leer el video. Podría estar corrupto o ser incompatible: {e}")
+        st.stop()
+        
     mins = int(total // 60)
     st.success(f"✅ Video de {mins} minutos detectado")
     
     with st.spinner("🤖 La IA está analizando el ritmo y audio del video..."):
-        clip = VideoFileClip(video_path)
-        audio = clip.audio
-        
-        if audio is None:
-            energia = [1.0 for _ in range(int(total))]
-        else:
-            fps_a = 22050
-            arr = audio.to_soundarray(fps=fps_a)
-            if len(arr.shape) > 1:
-                arr = arr.mean(axis=1)
-                
-            energia = []
-            for seg in range(int(total)):
-                ini = seg * fps_a
-                fin = (seg + 1) * fps_a
-                if fin > len(arr):
-                    break
-                trozo = arr[ini:fin]
-                v = float(np.sqrt(np.mean(trozo ** 2)))
-                energia.append(v + 0.0001)
-        clip.close()
-        
-        scores = []
-        for i in range(len(energia) - duracion):
-            ventana = energia[i:i+duracion]
-            s = sum(ventana) / len(ventana)
-            s = s + max(ventana) * 0.8
-            scores.append((s, i))
+        try:
+            clip = VideoFileClip(video_path)
+            audio = clip.audio
             
-        scores.sort(reverse=True)
-        inicios = []
-        for s, inicio in scores:
-            cerca = False
-            for ya in inicios:
-                if abs(inicio - ya) < duracion + 5:
-                    cerca = True
-            if not cerca:
-                inicios.append(inicio)
-            if len(inicios) >= num_shorts:
-                break
-        inicios.sort()
+            if audio is None:
+                energia = [1.0 for _ in range(int(total))]
+            else:
+                fps_a = 11025  # Reducido para ahorrar memoria RAM
+                arr = audio.to_soundarray(fps=fps_a)
+                if len(arr.shape) > 1:
+                    arr = arr.mean(axis=1)
+                    
+                energia = []
+                for seg in range(int(total)):
+                    ini = seg * fps_a
+                    fin = (seg + 1) * fps_a
+                    if fin > len(arr):
+                        break
+                    trozo = arr[ini:fin]
+                    v = float(np.sqrt(np.mean(trozo ** 2)))
+                    energia.append(v + 0.0001)
+            clip.close()
+            
+            scores = []
+            for i in range(len(energia) - duracion):
+                ventana = energia[i:i+duracion]
+                s = sum(ventana) / len(ventana)
+                s = s + max(ventana) * 0.8
+                scores.append((s, i))
+                
+            scores.sort(reverse=True)
+            inicios = []
+            for s, inicio in scores:
+                cerca = False
+                for ya in inicios:
+                    if abs(inicio - ya) < duracion + 5:
+                        cerca = True
+                if not cerca:
+                    inicios.append(inicio)
+                if len(inicios) >= num_shorts:
+                    break
+            inicios.sort()
+        except Exception as e:
+            st.error(f"❌ Error durante el análisis del audio: {e}")
+            st.stop()
         
     st.success("✅ ¡Momentos épicos encontrados!")
     
     with st.spinner("✂️ Recortando al centro en formato vertical (9:16)..."):
-        clip_o = VideoFileClip(video_path)
-        nuevos = []
-        prog = st.progress(0)
-        
-        for i, inicio in enumerate(inicios):
-            fin = inicio + duracion
-            if fin > total:
-                fin = total
+        try:
+            clip_o = VideoFileClip(video_path)
+            nuevos = []
+            prog = st.progress(0)
             
-            clip2 = clip_o.subclipped(inicio, fin)
-            w, h = clip2.size
-            
-            # ===== CÁLCULO DE RECORTE VERTICAL 9:16 =====
-            target_width = int(h * (9 / 16))
-            if target_width > w:
-                target_width = w
-                target_height = int(w * (16 / 9))
-                cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=target_height)
-            else:
-                cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=h)
-            
-            cv = cv.resized(height=1280)
-            
-            salida = os.path.join(tmpdir, f"s{i+1}.mp4")
-            cv.write_videofile(salida, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
-            
-            puntaje = 98 - (i * 4)
-            if puntaje < 75:
-                puntaje = 75
-            nuevos.append({"path": salida, "duracion": duracion, "inicio": inicio, "score": puntaje})
-            prog.progress((i+1)/len(inicios))
-            
-        clip_o.close()
-        st.session_state.shorts_list = nuevos
-        st.session_state.sel = 0
-        st.balloons()
-        st.rerun()
+            for i, inicio in enumerate(inicios):
+                fin = inicio + duracion
+                if fin > total:
+                    fin = total
+                
+                clip2 = clip_o.subclipped(inicio, fin)
+                w, h = clip2.size
+                
+                # CÁLCULO DE RECORTE VERTICAL 9:16
+                target_width = int(h * (9 / 16))
+                if target_width > w:
+                    target_width = w
+                    target_height = int(w * (16 / 9))
+                    cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=target_height)
+                else:
+                    cv = clip2.cropped(x_center=w//2, y_center=h//2, width=target_width, height=h)
+                
+                # Redimensionar a 720p de altura para evitar sobrecarga de memoria en la nube
+                cv = cv.resized(height=720)
+                
+                salida = os.path.join(tmpdir, f"s{i+1}.mp4")
+                cv.write_videofile(salida, codec="libx264", audio_codec="aac", preset="ultrafast", logger=None)
+                
+                puntaje = 98 - (i * 4)
+                if puntaje < 75:
+                    puntaje = 75
+                nuevos.append({"path": salida, "duracion": duracion, "inicio": inicio, "score": puntaje})
+                prog.progress((i+1)/len(inicios))
+                
+            clip_o.close()
+            st.session_state.shorts_list = nuevos
+            st.session_state.sel = 0
+            st.balloons()
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Error al exportar el video. Es probable que el servidor se haya quedado sin memoria RAM. Intenta con un video más corto. Detalle: {e}")
